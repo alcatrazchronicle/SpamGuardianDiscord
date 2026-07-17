@@ -1,59 +1,56 @@
 const attachmentHistory = new Map();
 
+const TIME_WINDOW = (parseInt(process.env.TIME_WINDOW_SECONDS, 10) || 5) * 1000;
+
+const REQUIRED_MATCHES = parseInt(process.env.CHANNEL_THRESHOLD, 10) || 2;
+
 function getAttachmentKey(attachment) {
-    return `${attachment.name}_${attachment.size}`;
+  return `${attachment.name}_${attachment.size}`;
 }
 
 async function checkAttachments(message) {
-    if (!message.attachments.size) return null;
+  if (!message.attachments.size) return null;
 
-    const now = Date.now();
-    const userId = message.author.id;
+  const now = Date.now();
+  const userId = message.author.id;
 
-    if (!attachmentHistory.has(userId)) {
-        attachmentHistory.set(userId, []);
+  if (!attachmentHistory.has(userId)) {
+    attachmentHistory.set(userId, []);
+  }
+
+  const history = attachmentHistory.get(userId);
+
+  const recent = history.filter((a) => now - a.timestamp <= TIME_WINDOW);
+
+  for (const attachment of message.attachments.values()) {
+    const key = getAttachmentKey(attachment);
+
+    recent.push({
+      key,
+      channelId: message.channel.id,
+      timestamp: now,
+      type: attachment.contentType || "Attachment",
+      url: attachment.url,
+    });
+
+    const matches = recent.filter((a) => a.key === key);
+
+    if (matches.length >= REQUIRED_MATCHES) {
+      attachmentHistory.set(userId, recent);
+
+      return {
+        spam: true,
+        type: attachment.contentType || "Attachment",
+        url: attachment.url,
+      };
     }
+  }
 
-    const history = attachmentHistory.get(userId);
+  attachmentHistory.set(userId, recent);
 
-    const recent = history.filter(
-        a => now - a.timestamp <= Number(process.env.TIME_WINDOW_SECONDS) * 1000
-    );
-
-    for (const attachment of message.attachments.values()) {
-
-        const key = getAttachmentKey(attachment);
-
-        recent.push({
-            key,
-            channelId: message.channel.id,
-            timestamp: now,
-            type: attachment.contentType || "unknown",
-            url: attachment.url
-        });
-
-        const matches = recent.filter(a => a.key === key);
-
-        const uniqueChannels = [...new Set(matches.map(a => a.channelId))];
-
-        if (
-            uniqueChannels.length >= Number(process.env.CHANNEL_THRESHOLD)
-        ) {
-            attachmentHistory.set(userId, recent);
-
-            return {
-                spam: true,
-                type: attachment.contentType || "attachment",
-                url: attachment.url
-            };
-        }
-    }
-
-    attachmentHistory.set(userId, recent);
-
-    return null;
+  return null;
 }
 
 module.exports = {
-    checkAttachments
+  checkAttachments,
 };
