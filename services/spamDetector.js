@@ -57,8 +57,7 @@ async function logToModChannel(
 
                         name: "User",
 
-                        value:
-`${message.author.tag}
+                        value: `${message.author} (${message.author.tag})
 ${message.author.id}`
 
                     },
@@ -140,16 +139,11 @@ async function punish(
 
         }
 
-        if (message.deletable) {
-
-            try {
-
-                await message.delete();
-
+        try {
+                if (message.deletable) {
+                    await message.delete();
+                }
             } catch {}
-
-        }
-
         await message.member.timeout(
             TIMEOUT_DURATION,
             reason
@@ -198,16 +192,17 @@ async function checkMessage(message) {
 
         return punish(
             message,
-            attachmentSpam.type,
-            attachmentSpam.url,
+            attachmentSpam.type || "Attachment",
+            attachmentSpam.url || "Attachment",
             "Attachment Spam",
             [ 
               {
                  message
               }
             ]  
-    };
+        );
 
+    }
     // Ignore empty text
     if (content.length < 2) return;
 
