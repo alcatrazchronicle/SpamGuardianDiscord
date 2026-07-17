@@ -5,12 +5,12 @@ const userMessages = new Map();
 
 const MOD_LOG_CHANNEL_ID = process.env.MOD_LOG_CHANNEL_ID;
 
-const TIME_WINDOW = Number(process.env.TIME_WINDOW_SECONDS) * 1000;
+const TIME_WINDOW = (parseInt(process.env.TIME_WINDOW_SECONDS, 10) || 5) * 1000;
 
 const TIMEOUT_DURATION =
   (parseInt(process.env.TIMEOUT_HOURS, 10) || 6) * 60 * 60 * 1000;
 
-const REQUIRED_CHANNELS = Number(process.env.CHANNEL_THRESHOLD);
+const REQUIRED_CHANNELS = parseInt(process.env.CHANNEL_THRESHOLD, 10) || 2;
 
 function normalize(text) {
   return text.toLowerCase().replace(/\s+/g, " ").trim();
@@ -165,7 +165,7 @@ async function checkMessage(message) {
   console.log("Recent size:", recent.length);
   console.table(matches);
 
-  console.clear();
+  // console.clear();
 
   console.log("====== USER MESSAGE HISTORY ======");
 
