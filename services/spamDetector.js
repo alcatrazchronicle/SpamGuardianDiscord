@@ -144,10 +144,13 @@ async function punish(
                     await message.delete();
                 }
             } catch {}
-        await message.member.timeout(
-            TIMEOUT_DURATION,
-            reason
-        );
+        console.log("process.env.TIMEOUT_HOURS:", process.env.TIMEOUT_HOURS);
+console.log("TIMEOUT_DURATION:", TIMEOUT_DURATION);
+
+await message.member.timeout(
+    21600000,
+    reason
+)
 
         await logToModChannel(
             message,
