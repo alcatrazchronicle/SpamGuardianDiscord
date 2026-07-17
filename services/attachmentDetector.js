@@ -31,6 +31,7 @@ async function checkAttachments(message) {
       timestamp: now,
       type: attachment.contentType || "Attachment",
       url: attachment.url,
+      message,
     });
 
     const matches = recent.filter((a) => a.key === key);

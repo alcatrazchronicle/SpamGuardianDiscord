@@ -91,10 +91,6 @@ async function punish(message, type, value, reason, matches = []) {
 
     await message.member.timeout(21600000, reason);
 
-    await message.channel.send({
-      content: `🚨 ${message.author} has been timed out for **${reason}**.`,
-    });
-
     await logToModChannel(message, type, value, reason);
 
     console.log(`🚨 ${reason}: ${message.author.tag}`);
