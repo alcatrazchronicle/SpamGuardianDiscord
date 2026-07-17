@@ -108,6 +108,12 @@ async function checkMessage(message) {
 
   const userId = message.author.id;
   const content = normalize(message.content || "");
+  console.log(
+    "Received:",
+    message.id,
+    message.content,
+    new Date().toISOString(),
+  );
 
   // -----------------------------
   // Attachment Spam
@@ -152,6 +158,12 @@ async function checkMessage(message) {
   userMessages.set(userId, recent);
 
   const matches = recent.filter((m) => m.content === content);
+
+  console.log("Current content:", content);
+  console.log("Matches:", matches.length);
+  console.log("History size:", history.length);
+  console.log("Recent size:", recent.length);
+  console.table(matches);
 
   console.clear();
 
