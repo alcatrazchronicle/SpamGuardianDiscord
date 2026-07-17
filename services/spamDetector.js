@@ -1,88 +1,301 @@
+const { checkAttachments } = require("./attachmentDetector");
+
 const activeTimeouts = new Set();
 const userMessages = new Map();
 
-const TIME_WINDOW = 30 * 1000; // 30 seconds
-const TIMEOUT_DURATION = 6 * 60 * 60 * 1000; // 6 hours
-const REQUIRED_CHANNELS = 2;
+const MOD_LOG_CHANNEL_ID = process.env.MOD_LOG_CHANNEL_ID;
+
+const TIME_WINDOW =
+    Number(process.env.TIME_WINDOW_SECONDS) * 1000;
+
+const TIMEOUT_DURATION =
+    Number(process.env.TIMEOUT_HOURS) *
+    60 *
+    60 *
+    1000;
+
+const REQUIRED_CHANNELS =
+    Number(process.env.CHANNEL_THRESHOLD);
 
 function normalize(text) {
+
     return text
         .toLowerCase()
         .replace(/\s+/g, " ")
         .trim();
+
 }
 
-async function checkMessage(message) {
-    if (!message.inGuild()) return;
-    if (message.author.bot) return;
+async function logToModChannel(
+    message,
+    type,
+    value,
+    reason
+) {
 
-    const userId = message.author.id;
-    const content = normalize(message.content);
+    const modLog =
+        message.guild.channels.cache.get(
+            MOD_LOG_CHANNEL_ID
+        );
 
-    if (content.length < 2) return;
+    if (!modLog) return;
 
-    if (!userMessages.has(userId)) {
-        userMessages.set(userId, []);
-    }
+    await modLog.send({
 
-    const history = userMessages.get(userId);
-    const now = Date.now();
+        embeds: [
 
-    // Remove messages older than 30 seconds
-    const recent = history.filter(m => now - m.timestamp <= TIME_WINDOW);
+            {
 
-    recent.push({
-        content,
-        channelId: message.channel.id,
-        channelName: message.channel.name,
-        timestamp: now
+                color: 0xff0000,
+
+                title:
+                    "🚨 Spam Detected",
+
+                fields: [
+
+                    {
+
+                        name: "User",
+
+                        value:
+`${message.author.tag}
+${message.author.id}`
+
+                    },
+
+                    {
+
+                        name: "Reason",
+
+                        value: reason,
+
+                        inline: true
+
+                    },
+
+                    {
+
+                        name: "Type",
+
+                        value: type,
+
+                        inline: true
+
+                    },
+
+                    {
+
+                        name: "Content",
+
+                        value:
+String(value).substring(0, 1000)
+
+                    }
+
+                ],
+
+                timestamp:
+new Date().toISOString()
+
+            }
+
+        ]
+
     });
 
-    userMessages.set(userId, recent);
+}
 
-    // Find matching messages
-    const matches = recent.filter(m => m.content === content);
+async function punish(
+    message,
+    type,
+    value,
+    reason,
+    matches = []
+) {
 
-    // Count unique channels
-    const uniqueChannels = [...new Set(matches.map(m => m.channelId))];
+    const userId =
+        message.author.id;
 
-    console.clear();
-    console.log("====== USER MESSAGE HISTORY ======");
-    console.table(recent);
-
-    if (uniqueChannels.length < REQUIRED_CHANNELS) return;
-
-    if (activeTimeouts.has(userId)) return;
+    if (activeTimeouts.has(userId))
+        return;
 
     activeTimeouts.add(userId);
 
     try {
+
+        for (const spam of matches) {
+
+            try {
+
+                if (
+                    spam.message &&
+                    spam.message.deletable
+                ) {
+
+                    await spam.message.delete();
+
+                }
+
+            } catch {}
+
+        }
+
+        if (message.deletable) {
+
+            try {
+
+                await message.delete();
+
+            } catch {}
+
+        }
+
         await message.member.timeout(
             TIMEOUT_DURATION,
-            "Cross-channel spam"
+            reason
         );
 
-        console.log("================================");
-        console.log("🚨 SPAM DETECTED");
-        console.log("User:", message.author.tag);
-        console.log("Message:", content);
-        console.log("Channels:", uniqueChannels.length);
-        console.log("Action: Timed out for 6 hours");
-        console.log("================================");
+        await logToModChannel(
+            message,
+            type,
+            value,
+            reason
+        );
 
-        await message.channel.send(
-            `🚨 ${message.author} has been timed out for **6 hours** for cross-channel spam.`
+        console.log(
+            `🚨 ${reason}: ${message.author.tag}`
         );
 
     } catch (err) {
-        console.error("Timeout failed:", err);
+
+        console.error(err);
+
     }
 
     setTimeout(() => {
+
         activeTimeouts.delete(userId);
-    }, 5000);
+
+    },5000);
+
+}
+async function checkMessage(message) {
+
+    if (!message.inGuild()) return;
+    if (message.author.bot) return;
+
+    const userId = message.author.id;
+    const content = normalize(message.content || "");
+
+    // -----------------------------
+    // Attachment Spam
+    // -----------------------------
+
+    const attachmentSpam =
+        await checkAttachments(message);
+
+    if (attachmentSpam) {
+
+        return punish(
+            message,
+            attachmentSpam.type,
+            attachmentSpam.url,
+            "Attachment Spam",
+            [ 
+              {
+                 message
+              }
+            ]  
+    };
+
+    // Ignore empty text
+    if (content.length < 2) return;
+
+    if (!userMessages.has(userId)) {
+
+        userMessages.set(userId, []);
+
+    }
+
+    const history =
+        userMessages.get(userId);
+
+    const now = Date.now();
+
+    const recent = history.filter(
+
+        m =>
+            now - m.timestamp <=
+            TIME_WINDOW
+
+    );
+
+    recent.push({
+
+        content,
+        channelId: message.channel.id,
+        channelName: message.channel.name,
+        timestamp: now,
+        message
+
+    });
+
+    userMessages.set(
+        userId,
+        recent
+    );
+
+    const matches = recent.filter(
+
+        m => m.content === content
+
+    );
+
+    const uniqueChannels = [
+
+        ...new Set(
+            matches.map(
+                m => m.channelId
+            )
+        )
+
+    ];
+
+    console.clear();
+
+    console.log(
+        "====== USER MESSAGE HISTORY ======"
+    );
+
+    console.table(recent);
+
+    if (
+        uniqueChannels.length <
+        REQUIRED_CHANNELS
+    ) {
+
+        return;
+
+    }
+
+    return punish(
+
+        message,
+
+        "Text Spam",
+
+        content,
+
+        "Cross-Channel Spam",
+
+        matches
+
+    );
+
 }
 
 module.exports = {
+
     checkMessage
+
 };
