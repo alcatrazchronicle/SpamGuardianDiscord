@@ -34,8 +34,8 @@ It automatically detects users who spam duplicate messages or attachments across
 Clone the repository:
 
 ```bash
-git clone https://github.com/alcatrazchronicle/SpamGuardian.git
-cd SpamGuardian
+git clone https://github.com/alcatrazchronicle/SpamGuardianDiscord.git
+cd SpamGuardianDiscord
 npm install
 ```
 
