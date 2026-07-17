@@ -153,15 +153,13 @@ async function checkMessage(message) {
 
   const matches = recent.filter((m) => m.content === content);
 
-  const uniqueChannels = [...new Set(matches.map((m) => m.channelId))];
-
   console.clear();
 
   console.log("====== USER MESSAGE HISTORY ======");
 
   console.table(recent);
 
-  if (uniqueChannels.length < REQUIRED_CHANNELS) {
+  if (matches.length < REQUIRED_CHANNELS) {
     return;
   }
 
