@@ -127,11 +127,7 @@ async function checkMessage(message) {
       attachmentSpam.type || "Attachment",
       attachmentSpam.url || "Attachment",
       "Attachment Spam",
-      [
-        {
-          message,
-        },
-      ],
+      attachmentSpam.matches,
     );
   }
   // Ignore empty text

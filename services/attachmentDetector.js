@@ -43,6 +43,7 @@ async function checkAttachments(message) {
         spam: true,
         type: attachment.contentType || "Attachment",
         url: attachment.url,
+        matches,
       };
     }
   }
